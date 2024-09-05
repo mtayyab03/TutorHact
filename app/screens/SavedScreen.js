@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Image,
   TouchableOpacity,
@@ -6,12 +6,19 @@ import {
   View,
   Text,
   StyleSheet,
-  Platform,
   ScrollView,
 } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
-import { MaterialIcons, Feather, Fontisto } from "@expo/vector-icons";
-
+import { Feather, Fontisto } from "@expo/vector-icons";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+} from "firebase/firestore";
+import { db } from "../../firebase"; // Firebase config
 // componenets
 import HeartRating from "../components/HeartRating";
 import Header from "../components/Header";
@@ -22,40 +29,63 @@ import { FontFamily } from "../config/font";
 import icons from "../config/icons";
 
 const SavedScreen = (props) => {
-  const tutorList = [
-    {
-      id: 1,
-      ImageSource: icons.per2,
-      name: "Milish Maze",
-      subject: "Math",
-      age: "18-25",
-      gender: "Male",
-      rateperhour: "30$",
-      contact: "89330589",
-      description:
-        "I’m a passionate math tutor who loves making complex concepts approachable and engaging. My teaching style is vibrant and interactive, combining clear explanations with hands-on problem-solving techniques. With years of experience and a deep understanding of various mathematical disciplines, I tailor my approach to meet each student’s unique needs. My enthusiasm for math is contagious, helping to create a positive learning environment where students feel confident and motivated.",
-      experience: "3-5 years",
-      hearts: "5",
-      isFavorite: true,
-    },
-    {
-      id: 2,
-      ImageSource: icons.per4,
-      name: "Alina Will",
-      subject: "English",
-      age: "18-25",
-      gender: "Male",
-      rateperhour: "30$",
-      contact: "89330589",
-      description:
-        "I’m a passionate math tutor who loves making complex concepts approachable and engaging. My teaching style is vibrant and interactive, combining clear explanations with hands-on problem-solving techniques. With years of experience and a deep understanding of various mathematical disciplines, I tailor my approach to meet each student’s unique needs. My enthusiasm for math is contagious, helping to create a positive learning environment where students feel confident and motivated.",
-      experience: "3-5 years",
-      hearts: "4",
-      isFavorite: true,
-    },
-  ];
-  const [cards, setCards] = useState(tutorList);
+  const [cards, setCards] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    // Function to fetch tutors and reviews
+    const fetchTutorsAndReviews = () => {
+      const unsubscribe = onSnapshot(
+        collection(db, "tutors"),
+        async (snapshot) => {
+          try {
+            const tutorData = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
+
+            const updatedTutorData = await Promise.all(
+              tutorData.map(async (tutor) => {
+                const reviewsCollection = collection(
+                  db,
+                  "tutors",
+                  tutor.id,
+                  "reviews"
+                );
+                const reviewsSnapshot = await getDocs(reviewsCollection);
+                const reviews = reviewsSnapshot.docs.map((doc) => doc.data());
+
+                const totalRating = reviews.reduce(
+                  (sum, review) => sum + review.rating,
+                  0
+                );
+                const averageRating =
+                  reviews.length > 0
+                    ? Math.round(totalRating / reviews.length)
+                    : 0;
+
+                return {
+                  ...tutor,
+                  averageRating,
+                  isFavorite: tutor.isFavorite || false,
+                };
+              })
+            );
+
+            setCards(updatedTutorData);
+          } catch (error) {
+            Alert.alert("Error", "Failed to load data from Firestore.");
+            console.log("Firestore error: ", error);
+          }
+        }
+      );
+
+      // Cleanup function to unsubscribe from the listener
+      return () => unsubscribe();
+    };
+
+    fetchTutorsAndReviews();
+  }, []);
 
   const filteredTutor = cards.filter(
     (tutor) =>
@@ -63,13 +93,20 @@ const SavedScreen = (props) => {
       tutor.subject.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Toggle favorite function
-  const toggleFavorite = (id) => {
-    setCards((prevCards) =>
-      prevCards.map((card) =>
+  const toggleFavorite = async (id) => {
+    try {
+      const updatedCards = cards.map((card) =>
         card.id === id ? { ...card, isFavorite: !card.isFavorite } : card
-      )
-    );
+      );
+      setCards(updatedCards);
+
+      const tutorRef = doc(db, "tutors", id);
+      await updateDoc(tutorRef, {
+        isFavorite: updatedCards.find((card) => card.id === id).isFavorite,
+      });
+    } catch (error) {
+      console.error("Error updating favorite status: ", error);
+    }
   };
 
   return (
@@ -130,129 +167,133 @@ const SavedScreen = (props) => {
           width: "100%",
         }}
       >
-        {filteredTutor.map((item, i) => (
-          <View
-            key={i}
-            style={{
-              width: "90%",
-              marginTop: RFPercentage(1.5),
-              padding: RFPercentage(1.5),
-              backgroundColor: Colors.white,
-              borderWidth: RFPercentage(0.1),
-              borderColor: Colors.lightWhite,
-              borderRadius: RFPercentage(1),
-              flexDirection: "row",
-            }}
-          >
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                props.navigation.navigate("TutorDetail");
-              }}
+        {filteredTutor
+          .filter((item) => item.isFavorite) // Display only favorite tutors
+          .map((item, i) => (
+            <View
+              key={i}
               style={{
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
+                width: "90%",
+                marginTop: RFPercentage(1.5),
+                padding: RFPercentage(1.5),
+                backgroundColor: Colors.white,
+                borderWidth: RFPercentage(0.1),
+                borderColor: Colors.lightWhite,
+                borderRadius: RFPercentage(1),
+                flexDirection: "row",
               }}
             >
-              <Image
-                style={{
-                  width: RFPercentage(9),
-                  height: RFPercentage(9),
-                  borderRadius: RFPercentage(1),
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  props.navigation.navigate("TutorDetail", {
+                    tutorData: item,
+                  });
                 }}
-                source={item.ImageSource}
-              />
-            </TouchableOpacity>
-            <View style={{ marginLeft: RFPercentage(2), width: "70%" }}>
-              <View
                 style={{
-                  flexDirection: "row",
                   alignItems: "center",
-                  width: "100%",
-                  justifyContent: "space-between",
+                  justifyContent: "center",
+                  overflow: "hidden",
                 }}
               >
-                <Text
+                <Image
                   style={{
-                    color: Colors.primary,
-                    fontFamily: FontFamily.medium,
-                    fontSize: RFPercentage(1.8),
+                    width: RFPercentage(9),
+                    height: RFPercentage(9),
+                    borderRadius: RFPercentage(1),
+                  }}
+                  source={{ uri: item.profilePicture }} // Assuming profilePicture is a URL
+                />
+              </TouchableOpacity>
+              <View style={{ marginLeft: RFPercentage(2), width: "70%" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    width: "100%",
+                    justifyContent: "space-between",
                   }}
                 >
-                  {item.name}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => toggleFavorite(item.id)}
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    bottom: RFPercentage(1.5),
-                  }}
-                >
-                  <Fontisto
-                    name="favorite"
-                    color={item.isFavorite ? Colors.primary : Colors.grey}
-                    size={24}
-                  />
-                </TouchableOpacity>
-              </View>
-              <Text
-                style={{
-                  marginTop: RFPercentage(0.5),
-                  color: Colors.blacky,
-                  fontFamily: FontFamily.regular,
-                  fontSize: RFPercentage(1.2),
-                }}
-              >
-                Experience: {item.experience}
-              </Text>
-              <View
-                style={{
-                  marginTop: RFPercentage(1),
-                  flexDirection: "row",
-                  width: "100%",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                }}
-              >
+                  <Text
+                    style={{
+                      color: Colors.primary,
+                      fontFamily: FontFamily.medium,
+                      fontSize: RFPercentage(1.8),
+                    }}
+                  >
+                    {item.name}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => toggleFavorite(item.id)}
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      bottom: RFPercentage(1.5),
+                    }}
+                  >
+                    <Fontisto
+                      name="favorite"
+                      color={item.isFavorite ? Colors.primary : Colors.grey}
+                      size={24}
+                    />
+                  </TouchableOpacity>
+                </View>
                 <Text
                   style={{
+                    marginTop: RFPercentage(0.5),
                     color: Colors.blacky,
                     fontFamily: FontFamily.regular,
                     fontSize: RFPercentage(1.2),
                   }}
                 >
-                  Subject: {item.subject}
+                  Experience: {item.experience}
                 </Text>
-              </View>
-              <View
-                style={{
-                  width: "100%",
-                  justifyContent: "flex-end",
-                  alignItems: "flex-end",
-                }}
-              >
-                <HeartRating rating={item.hearts} />
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={{ flexDirection: "row" }}
+                <View
+                  style={{
+                    marginTop: RFPercentage(1),
+                    flexDirection: "row",
+                    width: "100%",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
                 >
                   <Text
                     style={{
-                      color: Colors.lightgrey,
-                      fontFamily: FontFamily.semiBold,
+                      color: Colors.blacky,
+                      fontFamily: FontFamily.regular,
                       fontSize: RFPercentage(1.2),
-                      marginTop: RFPercentage(0.3),
                     }}
                   >
-                    {item.hearts} hearts
+                    Subject: {item.subject}
                   </Text>
-                </TouchableOpacity>
+                </View>
+                <View
+                  style={{
+                    width: "100%",
+                    justifyContent: "flex-end",
+                    alignItems: "flex-end",
+                  }}
+                >
+                  <HeartRating rating={item.averageRating} />
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={{ flexDirection: "row" }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.lightgrey,
+                        fontFamily: FontFamily.semiBold,
+                        fontSize: RFPercentage(1.2),
+                        marginTop: RFPercentage(0.3),
+                      }}
+                    >
+                      {item.averageRating} hearts
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        ))}
+          ))}
       </ScrollView>
     </View>
   );

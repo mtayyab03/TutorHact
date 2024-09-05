@@ -6,11 +6,20 @@ import {
   View,
   Text,
   StyleSheet,
-  Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
-import { MaterialIcons, Feather, Fontisto } from "@expo/vector-icons";
+import { Feather, Fontisto } from "@expo/vector-icons";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+} from "firebase/firestore";
+import { db } from "../../firebase"; // Firebase config
 
 // componenets
 import HeartRating from "../components/HeartRating";
@@ -19,92 +28,64 @@ import Header from "../components/Header";
 //config
 import Colors from "../config/Colors";
 import { FontFamily } from "../config/font";
-import icons from "../config/icons";
 
 const HomeScreen = (props) => {
-  const tutorList = [
-    {
-      id: 1,
-      ImageSource: icons.per2,
-      name: "Milish Maze",
-      subject: "Math",
-      age: "18-25",
-      gender: "Male",
-      rateperhour: "30$",
-      contact: "89330589",
-      description:
-        "I’m a passionate math tutor who loves making complex concepts approachable and engaging. My teaching style is vibrant and interactive, combining clear explanations with hands-on problem-solving techniques. With years of experience and a deep understanding of various mathematical disciplines, I tailor my approach to meet each student’s unique needs. My enthusiasm for math is contagious, helping to create a positive learning environment where students feel confident and motivated.",
-      experience: "3-5 years",
-      hearts: "5",
-      isFavorite: false,
-    },
-    {
-      id: 2,
-      ImageSource: icons.per3,
-      name: "Aina Asif",
-      subject: "English",
-      age: "18-25",
-      gender: "Female",
-      rateperhour: "40$",
-      contact: "89330589",
-      description:
-        "I’m a passionate math tutor who loves making complex concepts approachable and engaging. My teaching style is vibrant and interactive, combining clear explanations with hands-on problem-solving techniques. With years of experience and a deep understanding of various mathematical disciplines, I tailor my approach to meet each student’s unique needs. My enthusiasm for math is contagious, helping to create a positive learning environment where students feel confident and motivated.",
-      experience: "5-7 year",
-      hearts: "4",
-      isFavorite: false,
-    },
-    {
-      id: 3,
-      ImageSource: icons.per4,
-      name: "Rameen",
-      subject: "Biology",
-      age: "18-25",
-      gender: "Female",
-      rateperhour: "30$",
-      contact: "89330589",
-      description:
-        "I’m a passionate math tutor who loves making complex concepts approachable and engaging. My teaching style is vibrant and interactive, combining clear explanations with hands-on problem-solving techniques. With years of experience and a deep understanding of various mathematical disciplines, I tailor my approach to meet each student’s unique needs. My enthusiasm for math is contagious, helping to create a positive learning environment where students feel confident and motivated.",
-
-      experience: "2-3 year",
-      hearts: "3",
-      isFavorite: false,
-    },
-    {
-      id: 4,
-      ImageSource: icons.per2,
-      name: "Alina Will",
-      subject: "Math",
-      age: "18-25",
-      gender: "Male",
-      rateperhour: "20$",
-      contact: "89330589",
-      description:
-        "I’m a passionate math tutor who loves making complex concepts approachable and engaging. My teaching style is vibrant and interactive, combining clear explanations with hands-on problem-solving techniques. With years of experience and a deep understanding of various mathematical disciplines, I tailor my approach to meet each student’s unique needs. My enthusiasm for math is contagious, helping to create a positive learning environment where students feel confident and motivated.",
-
-      experience: "3-5 years",
-      hearts: "5",
-      isFavorite: false,
-    },
-    {
-      id: 5,
-      ImageSource: icons.per3,
-      name: "Laiba Rani",
-
-      subject: "Chemistry",
-      age: "18-25",
-      gender: "Male",
-      rateperhour: "15$",
-      contact: "89330589",
-      description:
-        "I’m a passionate math tutor who loves making complex concepts approachable and engaging. My teaching style is vibrant and interactive, combining clear explanations with hands-on problem-solving techniques. With years of experience and a deep understanding of various mathematical disciplines, I tailor my approach to meet each student’s unique needs. My enthusiasm for math is contagious, helping to create a positive learning environment where students feel confident and motivated.",
-      experience: "5-7 year",
-      hearts: "4",
-
-      isFavorite: false,
-    },
-  ];
-  const [cards, setCards] = useState(tutorList);
+  const [cards, setCards] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    // Function to fetch tutors and reviews
+    const fetchTutorsAndReviews = () => {
+      const unsubscribe = onSnapshot(
+        collection(db, "tutors"),
+        async (snapshot) => {
+          try {
+            const tutorData = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
+
+            const updatedTutorData = await Promise.all(
+              tutorData.map(async (tutor) => {
+                const reviewsCollection = collection(
+                  db,
+                  "tutors",
+                  tutor.id,
+                  "reviews"
+                );
+                const reviewsSnapshot = await getDocs(reviewsCollection);
+                const reviews = reviewsSnapshot.docs.map((doc) => doc.data());
+
+                const totalRating = reviews.reduce(
+                  (sum, review) => sum + review.rating,
+                  0
+                );
+                const averageRating =
+                  reviews.length > 0
+                    ? Math.round(totalRating / reviews.length)
+                    : 0;
+
+                return {
+                  ...tutor,
+                  averageRating,
+                  isFavorite: tutor.isFavorite || false,
+                };
+              })
+            );
+
+            setCards(updatedTutorData);
+          } catch (error) {
+            Alert.alert("Error", "Failed to load data from Firestore.");
+            console.log("Firestore error: ", error);
+          }
+        }
+      );
+
+      // Cleanup function to unsubscribe from the listener
+      return () => unsubscribe();
+    };
+
+    fetchTutorsAndReviews();
+  }, []);
 
   const filteredTutor = cards.filter(
     (tutor) =>
@@ -113,12 +94,33 @@ const HomeScreen = (props) => {
   );
 
   // Toggle favorite function
-  const toggleFavorite = (id) => {
-    setCards((prevCards) =>
-      prevCards.map((card) =>
+  const toggleFavorite = async (id) => {
+    try {
+      // Toggle favorite status locally
+      const updatedCards = cards.map((card) =>
         card.id === id ? { ...card, isFavorite: !card.isFavorite } : card
-      )
-    );
+      );
+      setCards(updatedCards);
+
+      // Log to check the updated status locally
+      console.log("Updated cards: ", updatedCards);
+
+      // Get the document reference
+      const tutorRef = doc(db, "tutors", id);
+
+      // Update the favorite status in Firestore
+      await updateDoc(tutorRef, {
+        isFavorite: updatedCards.find((card) => card.id === id).isFavorite,
+      });
+
+      console.log(
+        `Updated favorite status for tutor ${id}: ${!updatedCards.find(
+          (card) => card.id === id
+        ).isFavorite}`
+      );
+    } catch (error) {
+      console.error("Error updating favorite status: ", error);
+    }
   };
 
   return (
@@ -197,19 +199,7 @@ const HomeScreen = (props) => {
               activeOpacity={0.7}
               onPress={() => {
                 props.navigation.navigate("TutorDetail", {
-                  tutorData: {
-                    ImageSource: item.ImageSource,
-                    name: item.name,
-                    subject: item.subject,
-                    age: item.age,
-                    gender: item.gender,
-                    rateperhour: item.rateperhour,
-                    contact: item.contact,
-                    description: item.description,
-                    experience: item.experience,
-                    hearts: item.hearts,
-                    isFavorite: item.isFavorite,
-                  },
+                  tutorData: item,
                 });
               }}
               style={{
@@ -224,7 +214,7 @@ const HomeScreen = (props) => {
                   height: RFPercentage(9),
                   borderRadius: RFPercentage(1),
                 }}
-                source={item.ImageSource}
+                source={{ uri: item.profilePicture }} // Assuming profilePicture is a URL
               />
             </TouchableOpacity>
             <View style={{ marginLeft: RFPercentage(2), width: "70%" }}>
@@ -265,7 +255,7 @@ const HomeScreen = (props) => {
                   marginTop: RFPercentage(0.5),
                   color: Colors.blacky,
                   fontFamily: FontFamily.regular,
-                  fontSize: RFPercentage(1.2),
+                  fontSize: RFPercentage(1.4),
                 }}
               >
                 Experience: {item.experience}
@@ -283,7 +273,7 @@ const HomeScreen = (props) => {
                   style={{
                     color: Colors.blacky,
                     fontFamily: FontFamily.regular,
-                    fontSize: RFPercentage(1.2),
+                    fontSize: RFPercentage(1.4),
                   }}
                 >
                   Subject: {item.subject}
@@ -296,7 +286,7 @@ const HomeScreen = (props) => {
                   alignItems: "flex-end",
                 }}
               >
-                <HeartRating rating={item.hearts} />
+                <HeartRating rating={item.averageRating} />
                 <TouchableOpacity
                   activeOpacity={0.7}
                   style={{ flexDirection: "row" }}
@@ -309,7 +299,7 @@ const HomeScreen = (props) => {
                       marginTop: RFPercentage(0.3),
                     }}
                   >
-                    {item.hearts} hearts
+                    {item.averageRating} hearts
                   </Text>
                 </TouchableOpacity>
               </View>

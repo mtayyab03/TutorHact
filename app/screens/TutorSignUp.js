@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Image,
   TouchableOpacity,
@@ -18,6 +18,9 @@ import * as ImagePicker from "expo-image-picker"; // For profile picture upload
 import Colors from "../config/Colors";
 import { FontFamily } from "../config/font";
 import icons from "../config/icons";
+
+import { db } from "../../firebase"; // Firebase config
+import { collection, addDoc } from "firebase/firestore";
 
 // componenet
 import CustomPicker from "../components/CustomPicker";
@@ -58,7 +61,7 @@ const TutorSignUp = ({ navigation }) => {
     setSelectedOptionGender(item);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (
       !name ||
       !subject ||
@@ -74,9 +77,30 @@ const TutorSignUp = ({ navigation }) => {
       return;
     }
 
-    Alert.alert("Success", "Sign up successful!", [
-      { text: "Back To Home", onPress: () => navigation.navigate("BottomTab") },
-    ]);
+    try {
+      // Save data to Firestore
+      await addDoc(collection(db, "tutors"), {
+        name,
+        subject,
+        ratePerHour,
+        description,
+        contact,
+        experience: selectedOption,
+        age: selectedOptionAge,
+        gender: selectedOptionGender,
+        profilePicture,
+      });
+
+      Alert.alert("Success", "Sign up successful!", [
+        {
+          text: "Back To Home",
+          onPress: () => navigation.navigate("HomeScreen"),
+        },
+      ]);
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong, please try again.");
+      console.log("Firestore error: ", error);
+    }
   };
   return (
     <View
@@ -197,13 +221,18 @@ const TutorSignUp = ({ navigation }) => {
 
       {/* Subject Input */}
       <CustomPicker
-        options={["1-3 year", "3-5 year", "more than 5"]}
+        options={[
+          "18-25 years",
+          "26-35 years",
+          "35-40 years",
+          "above 40 years",
+        ]}
         selectedItem={selectedOptionAge}
         onSelect={handleSelectOptionAge}
         title="Age"
       />
       <CustomPicker
-        options={["18-25", "26-35", "35-40", "above 40"]}
+        options={["1-3 year", "3-5 year", "more than 5"]}
         selectedItem={selectedOption}
         onSelect={handleSelectOption}
         title="Experience"

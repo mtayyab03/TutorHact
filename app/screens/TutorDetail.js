@@ -10,7 +10,9 @@ import {
   ScrollView,
 } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
-import { FontAwesome, FontAwesome5, Fontisto } from "@expo/vector-icons";
+import { FontAwesome, FontAwesome5 } from "@expo/vector-icons";
+import { collection, getDocs, addDoc } from "firebase/firestore";
+import { db } from "../../firebase"; // Your Firebase configuration file
 
 // componenets
 import HeartRating from "../components/HeartRating";
@@ -19,13 +21,13 @@ import Header from "../components/Header";
 //config
 import Colors from "../config/Colors";
 import { FontFamily } from "../config/font";
-import icons from "../config/icons";
 
 const TutorDetail = ({ route, navigation }) => {
   const { tutorData } = route.params;
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [reviews, setReviews] = useState([]);
+  console.log("tuttor data", tutorData);
 
   const hearts = Array(5).fill(0);
 
@@ -33,15 +35,49 @@ const TutorDetail = ({ route, navigation }) => {
     setRating(index + 1);
   };
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const reviewsCollection = collection(
+          db,
+          "tutors",
+          tutorData.id,
+          "reviews"
+        );
+        const reviewsSnapshot = await getDocs(reviewsCollection);
+        const reviewsData = reviewsSnapshot.docs.map((doc) => doc.data());
+        setReviews(reviewsData);
+      } catch (error) {
+        console.error("Error fetching reviews: ", error);
+      }
+    };
+
+    fetchReviews();
+  }, [tutorData.id]);
+
+  const handleSubmit = async () => {
     if (reviewText.trim() && rating > 0) {
       const newReview = {
         review: reviewText,
         rating: rating,
       };
-      setReviews([...reviews, newReview]);
-      setReviewText(""); // Clear review input
-      setRating(0); // Reset rating
+
+      try {
+        const reviewsCollection = collection(
+          db,
+          "tutors",
+          tutorData.id,
+          "reviews"
+        );
+        await addDoc(reviewsCollection, newReview);
+
+        // Update local state
+        setReviews((prevReviews) => [...prevReviews, newReview]);
+        setReviewText(""); // Clear review input
+        setRating(0); // Reset rating
+      } catch (error) {
+        console.error("Error submitting review: ", error);
+      }
     } else {
       alert("Please write a review and select a rating.");
     }
@@ -109,7 +145,7 @@ const TutorDetail = ({ route, navigation }) => {
               height: RFPercentage(16),
               borderRadius: RFPercentage(1),
             }}
-            source={tutorData.ImageSource}
+            source={{ uri: tutorData.profilePicture }}
           />
         </TouchableOpacity>
         <View style={{ marginLeft: RFPercentage(2), width: "60%" }}>
@@ -118,7 +154,7 @@ const TutorDetail = ({ route, navigation }) => {
               marginTop: RFPercentage(0.5),
               color: Colors.blacky,
               fontFamily: FontFamily.medium,
-              fontSize: RFPercentage(1.2),
+              fontSize: RFPercentage(1.4),
             }}
           >
             Age: {tutorData.age}
@@ -128,7 +164,7 @@ const TutorDetail = ({ route, navigation }) => {
               marginTop: RFPercentage(0.5),
               color: Colors.blacky,
               fontFamily: FontFamily.medium,
-              fontSize: RFPercentage(1.2),
+              fontSize: RFPercentage(1.4),
             }}
           >
             Experience: {tutorData.experience}
@@ -138,7 +174,7 @@ const TutorDetail = ({ route, navigation }) => {
               marginTop: RFPercentage(0.5),
               color: Colors.blacky,
               fontFamily: FontFamily.medium,
-              fontSize: RFPercentage(1.2),
+              fontSize: RFPercentage(1.4),
             }}
           >
             Gender: {tutorData.gender}
@@ -150,7 +186,7 @@ const TutorDetail = ({ route, navigation }) => {
 
               color: Colors.blacky,
               fontFamily: FontFamily.medium,
-              fontSize: RFPercentage(1.2),
+              fontSize: RFPercentage(1.4),
             }}
           >
             Subject: {tutorData.subject}
@@ -161,10 +197,10 @@ const TutorDetail = ({ route, navigation }) => {
 
               color: Colors.blacky,
               fontFamily: FontFamily.medium,
-              fontSize: RFPercentage(1.2),
+              fontSize: RFPercentage(1.4),
             }}
           >
-            Rate per hour: {tutorData.rateperhour}
+            Rate per hour: {tutorData.ratePerHour}
           </Text>
           <Text
             style={{
@@ -172,7 +208,7 @@ const TutorDetail = ({ route, navigation }) => {
 
               color: Colors.blacky,
               fontFamily: FontFamily.medium,
-              fontSize: RFPercentage(1.2),
+              fontSize: RFPercentage(1.4),
             }}
           >
             Contact Information: {tutorData.contact}
@@ -185,7 +221,7 @@ const TutorDetail = ({ route, navigation }) => {
               marginTop: RFPercentage(1),
             }}
           >
-            <HeartRating rating={tutorData.hearts} />
+            <HeartRating rating={tutorData.averageRating} />
             <TouchableOpacity
               activeOpacity={0.7}
               style={{ flexDirection: "row" }}
@@ -198,7 +234,7 @@ const TutorDetail = ({ route, navigation }) => {
                   marginTop: RFPercentage(0.3),
                 }}
               >
-                {tutorData.hearts} hearts
+                {tutorData.averageRating} hearts
               </Text>
             </TouchableOpacity>
           </View>
@@ -208,7 +244,7 @@ const TutorDetail = ({ route, navigation }) => {
       <View style={{ width: "90%" }}>
         <Text
           style={{
-            fontSize: RFPercentage(1.3),
+            fontSize: RFPercentage(1.4),
             color: Colors.blacky,
             fontFamily: FontFamily.medium,
             marginTop: RFPercentage(1),
@@ -218,7 +254,7 @@ const TutorDetail = ({ route, navigation }) => {
         </Text>
         <Text
           style={{
-            fontSize: RFPercentage(1.2),
+            fontSize: RFPercentage(1.4),
             color: Colors.blacky,
             fontFamily: FontFamily.medium,
             marginTop: RFPercentage(1),
@@ -251,6 +287,7 @@ const TutorDetail = ({ route, navigation }) => {
         showsVerticalScrollIndicator={false}
         style={{
           width: "100%",
+          maxHeight: RFPercentage(19),
           flexGrow: 0,
         }}
       >
