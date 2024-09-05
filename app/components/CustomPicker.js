@@ -13,7 +13,6 @@ import FontAwesome from "react-native-vector-icons/FontAwesome";
 //config
 import Colors from "../config/Colors";
 import { FontFamily } from "../config/font";
-import icons from "../config/icons";
 
 const CustomPicker = ({ options, selectedItem, onSelect, title }) => {
   const [isModalVisible, setModalVisible] = useState(false);

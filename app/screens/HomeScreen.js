@@ -16,7 +16,6 @@ import {
   getDocs,
   updateDoc,
   doc,
-  getDoc,
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "../../firebase"; // Firebase config
