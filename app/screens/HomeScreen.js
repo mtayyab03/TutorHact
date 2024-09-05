@@ -23,6 +23,7 @@ import { db } from "../../firebase"; // Firebase config
 // componenets
 import HeartRating from "../components/HeartRating";
 import Header from "../components/Header";
+import CustomPicker from "../components/CustomPicker";
 
 //config
 import Colors from "../config/Colors";
@@ -31,6 +32,15 @@ import { FontFamily } from "../config/font";
 const HomeScreen = (props) => {
   const [cards, setCards] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [selectedOptionGender, setSelectedOptionGender] = useState(null);
+  const handleSelectOption = (item) => {
+    setSelectedOption(item);
+  };
+
+  const handleSelectOptionGender = (item) => {
+    setSelectedOptionGender(item);
+  };
   useEffect(() => {
     // Function to fetch tutors and reviews
     const fetchTutorsAndReviews = () => {
@@ -86,11 +96,19 @@ const HomeScreen = (props) => {
     fetchTutorsAndReviews();
   }, []);
 
-  const filteredTutor = cards.filter(
-    (tutor) =>
+  const filteredTutor = cards.filter((tutor) => {
+    const matchesSearchQuery =
       tutor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tutor.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      tutor.subject.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesExperience =
+      !selectedOption || tutor.experience === selectedOption;
+
+    const matchesGender =
+      !selectedOptionGender || tutor.gender === selectedOptionGender;
+
+    return matchesSearchQuery && matchesExperience && matchesGender;
+  });
 
   // Toggle favorite function
   const toggleFavorite = async (id) => {
@@ -121,7 +139,11 @@ const HomeScreen = (props) => {
       console.error("Error updating favorite status: ", error);
     }
   };
-
+  const clearFilters = () => {
+    setSelectedOption(null);
+    setSelectedOptionGender(null);
+    setSearchQuery(""); // Optional: Clear search as well
+  };
   return (
     <View
       style={{
@@ -155,6 +177,36 @@ const HomeScreen = (props) => {
             placeholderTextColor={Colors.lightgrey}
           />
         </View>
+      </View>
+
+      {/* filters */}
+      <View
+        style={{
+          flexDirection: "row",
+          width: "90%",
+          marginBottom: RFPercentage(1),
+          alignItems: "center",
+        }}
+      >
+        <View style={{ width: "38%" }}>
+          <CustomPicker
+            options={["1-3 year", "3-5 year", "more than 5"]}
+            selectedItem={selectedOption}
+            onSelect={handleSelectOption}
+            title="Experience"
+          />
+        </View>
+        <View style={{ width: "38%", marginLeft: RFPercentage(1) }}>
+          <CustomPicker
+            options={["Male", "Female", "Prefer not Say"]}
+            selectedItem={selectedOptionGender}
+            onSelect={handleSelectOptionGender}
+            title="Gender"
+          />
+        </View>
+        <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+          <Text style={styles.clearButtonText}>Clear</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={{ width: "90%" }}>
@@ -320,7 +372,8 @@ const styles = StyleSheet.create({
     borderWidth: RFPercentage(0.1),
     borderColor: Colors.primary,
     height: RFPercentage(5.5),
-    marginVertical: RFPercentage(1.5),
+    marginTop: RFPercentage(1.5),
+    marginBottom: RFPercentage(0.5),
     flexDirection: "row",
     alignItems: "center",
   },
@@ -344,5 +397,18 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: RFPercentage(1),
     fontFamily: FontFamily.medium,
+  },
+  clearButtonText: {
+    color: Colors.white,
+    fontFamily: FontFamily.medium,
+    fontSize: RFPercentage(1.5),
+  },
+  clearButton: {
+    marginVertical: RFPercentage(1),
+    paddingHorizontal: RFPercentage(2),
+    paddingVertical: RFPercentage(1),
+    backgroundColor: Colors.primary,
+    borderRadius: RFPercentage(1),
+    marginLeft: RFPercentage(1),
   },
 });

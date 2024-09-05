@@ -1,13 +1,5 @@
-import React, { useState } from "react";
-import {
-  Image,
-  KeyboardAvoidingView,
-  TouchableOpacity,
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-} from "react-native";
+import React from "react";
+import { StyleSheet, View, Text, TextInput } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
 
 //config

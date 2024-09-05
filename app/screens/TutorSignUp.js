@@ -220,30 +220,35 @@ const TutorSignUp = ({ navigation }) => {
       {/* picker */}
 
       {/* Subject Input */}
-      <CustomPicker
-        options={[
-          "18-25 years",
-          "26-35 years",
-          "35-40 years",
-          "above 40 years",
-        ]}
-        selectedItem={selectedOptionAge}
-        onSelect={handleSelectOptionAge}
-        title="Age"
-      />
-      <CustomPicker
-        options={["1-3 year", "3-5 year", "more than 5"]}
-        selectedItem={selectedOption}
-        onSelect={handleSelectOption}
-        title="Experience"
-      />
-      <CustomPicker
-        options={["Male", "Female", "Prefer not Say"]}
-        selectedItem={selectedOptionGender}
-        onSelect={handleSelectOptionGender}
-        title="Gender"
-      />
-
+      <View style={{ width: "70%" }}>
+        <CustomPicker
+          options={[
+            "18-25 years",
+            "26-35 years",
+            "35-40 years",
+            "above 40 years",
+          ]}
+          selectedItem={selectedOptionAge}
+          onSelect={handleSelectOptionAge}
+          title="Age"
+        />
+      </View>
+      <View style={{ width: "70%" }}>
+        <CustomPicker
+          options={["1-3 year", "3-5 year", "more than 5"]}
+          selectedItem={selectedOption}
+          onSelect={handleSelectOption}
+          title="Experience"
+        />
+      </View>
+      <View style={{ width: "70%" }}>
+        <CustomPicker
+          options={["Male", "Female", "Prefer not Say"]}
+          selectedItem={selectedOptionGender}
+          onSelect={handleSelectOptionGender}
+          title="Gender"
+        />
+      </View>
       <TextInput
         placeholder="Subject"
         value={subject}

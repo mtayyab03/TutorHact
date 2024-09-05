@@ -82,7 +82,7 @@ const CustomPicker = ({ options, selectedItem, onSelect, title }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: "60%",
+    width: "100%",
     marginVertical: RFPercentage(1),
   },
   pickerContainer: {

@@ -22,6 +22,7 @@ import { db } from "../../firebase"; // Firebase config
 // componenets
 import HeartRating from "../components/HeartRating";
 import Header from "../components/Header";
+import CustomPicker from "../components/CustomPicker";
 
 //config
 import Colors from "../config/Colors";
@@ -31,7 +32,20 @@ import icons from "../config/icons";
 const SavedScreen = (props) => {
   const [cards, setCards] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [selectedOptionGender, setSelectedOptionGender] = useState(null);
+  const handleSelectOption = (item) => {
+    setSelectedOption(item);
+  };
 
+  const handleSelectOptionGender = (item) => {
+    setSelectedOptionGender(item);
+  };
+  const clearFilters = () => {
+    setSelectedOption(null);
+    setSelectedOptionGender(null);
+    setSearchQuery(""); // Optional: Clear search as well
+  };
   useEffect(() => {
     // Function to fetch tutors and reviews
     const fetchTutorsAndReviews = () => {
@@ -87,11 +101,19 @@ const SavedScreen = (props) => {
     fetchTutorsAndReviews();
   }, []);
 
-  const filteredTutor = cards.filter(
-    (tutor) =>
+  const filteredTutor = cards.filter((tutor) => {
+    const matchesSearchQuery =
       tutor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tutor.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      tutor.subject.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesExperience =
+      !selectedOption || tutor.experience === selectedOption;
+
+    const matchesGender =
+      !selectedOptionGender || tutor.gender === selectedOptionGender;
+
+    return matchesSearchQuery && matchesExperience && matchesGender;
+  });
 
   const toggleFavorite = async (id) => {
     try {
@@ -142,6 +164,36 @@ const SavedScreen = (props) => {
             placeholderTextColor={Colors.lightgrey}
           />
         </View>
+      </View>
+
+      {/* filter */}
+      <View
+        style={{
+          flexDirection: "row",
+          width: "90%",
+          marginBottom: RFPercentage(1),
+          alignItems: "center",
+        }}
+      >
+        <View style={{ width: "38%" }}>
+          <CustomPicker
+            options={["1-3 year", "3-5 year", "more than 5"]}
+            selectedItem={selectedOption}
+            onSelect={handleSelectOption}
+            title="Experience"
+          />
+        </View>
+        <View style={{ width: "38%", marginLeft: RFPercentage(1) }}>
+          <CustomPicker
+            options={["Male", "Female", "Prefer not Say"]}
+            selectedItem={selectedOptionGender}
+            onSelect={handleSelectOptionGender}
+            title="Gender"
+          />
+        </View>
+        <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+          <Text style={styles.clearButtonText}>Clear</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={{ width: "90%" }}>
@@ -333,5 +385,18 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: RFPercentage(1),
     fontFamily: FontFamily.medium,
+  },
+  clearButtonText: {
+    color: Colors.white,
+    fontFamily: FontFamily.medium,
+    fontSize: RFPercentage(1.5),
+  },
+  clearButton: {
+    marginVertical: RFPercentage(1),
+    paddingHorizontal: RFPercentage(2),
+    paddingVertical: RFPercentage(1),
+    backgroundColor: Colors.primary,
+    borderRadius: RFPercentage(1),
+    marginLeft: RFPercentage(1),
   },
 });
