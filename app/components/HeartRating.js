@@ -16,6 +16,7 @@ const HeartRating = ({ rating }) => {
           size={16}
           color={Colors.red}
           style={styles.heart}
+          testID={`heart-icon-${index}`} // Use a unique testID for each heart
         />
       ))}
     </View>

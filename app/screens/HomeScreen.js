@@ -154,6 +154,7 @@ const HomeScreen = (props) => {
       }}
     >
       <Header
+        testID="header"
         onpress={() => {
           props.navigation.navigate("TutorSignUp");
         }}
@@ -166,7 +167,7 @@ const HomeScreen = (props) => {
           justifyContent: "space-between",
         }}
       >
-        <View style={styles.searchmain}>
+        <View testID="search-bar" style={styles.searchmain}>
           <Feather name="search" color={Colors.blacky} size={18} />
           <TextInput
             style={styles.inputtext}
@@ -180,6 +181,7 @@ const HomeScreen = (props) => {
 
       {/* filters */}
       <View
+        testID="filters"
         style={{
           flexDirection: "row",
           width: "90%",
@@ -203,7 +205,11 @@ const HomeScreen = (props) => {
             title="Gender"
           />
         </View>
-        <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+        <TouchableOpacity
+          testID="clear-button"
+          style={styles.clearButton}
+          onPress={clearFilters}
+        >
           <Text style={styles.clearButtonText}>Clear</Text>
         </TouchableOpacity>
       </View>
@@ -233,6 +239,7 @@ const HomeScreen = (props) => {
       >
         {filteredTutor.map((item, i) => (
           <TouchableOpacity
+            testID="tutor"
             activeOpacity={0.7}
             onPress={() => {
               props.navigation.navigate("TutorDetail", {
@@ -292,6 +299,7 @@ const HomeScreen = (props) => {
                   {item.name}
                 </Text>
                 <TouchableOpacity
+                  testID="favorite-button"
                   onPress={() => toggleFavorite(item.id)}
                   style={{
                     position: "absolute",

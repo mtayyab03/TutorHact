@@ -10,6 +10,7 @@ import { FontFamily } from "../config/font";
 export default function AppButton({ title, buttonColor }) {
   return (
     <LinearGradient
+      testID="linear-gradient" // Add this testID for testing
       colors={[Colors.primary, Colors.secondary]} // Define your two gradient colors here
       start={{ x: 0, y: 0 }} // Start point (top-left)
       end={{ x: 1, y: 1 }} // End point (bottom-right)
