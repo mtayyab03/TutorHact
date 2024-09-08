@@ -50,7 +50,7 @@ const Header = ({ onpress }) => {
         <TouchableOpacity onPress={onpress} activeOpacity={0.7}>
           <Text
             style={{
-              fontSize: RFPercentage(1.7),
+              fontSize: RFPercentage(2),
               color: Colors.white,
               fontFamily: FontFamily.semiBold,
               marginTop: RFPercentage(2),

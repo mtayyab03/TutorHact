@@ -7,18 +7,9 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
 } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
 import { Feather, Fontisto } from "@expo/vector-icons";
-import {
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-  onSnapshot,
-} from "firebase/firestore";
-import { db } from "../../firebase"; // Firebase config
 
 // componenets
 import HeartRating from "../components/HeartRating";
@@ -28,12 +19,14 @@ import CustomPicker from "../components/CustomPicker";
 //config
 import Colors from "../config/Colors";
 import { FontFamily } from "../config/font";
+import icons from "../config/icons";
 
 const HomeScreen = (props) => {
   const [cards, setCards] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOption, setSelectedOption] = useState(null);
   const [selectedOptionGender, setSelectedOptionGender] = useState(null);
+
   const handleSelectOption = (item) => {
     setSelectedOption(item);
   };
@@ -41,59 +34,58 @@ const HomeScreen = (props) => {
   const handleSelectOptionGender = (item) => {
     setSelectedOptionGender(item);
   };
+
   useEffect(() => {
-    // Function to fetch tutors and reviews
-    const fetchTutorsAndReviews = () => {
-      const unsubscribe = onSnapshot(
-        collection(db, "tutors"),
-        async (snapshot) => {
-          try {
-            const tutorData = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
+    // Dummy tutor data with reviews and ratings
+    const dummyTutorData = [
+      {
+        id: "1",
+        name: "John Doe",
+        subject: "Math",
+        experience: "3-5 year",
+        age: "25-30 years",
+        ratePerHour: "25",
+        contact: "65749837",
+        description:
+          "Ms. Laura James has been an educator for over 15 years, specializing in elementary school education. She holds a degree in Child Psychology from Harvard University and has received multiple awards for her innovative teaching methods.",
+        gender: "Male",
+        profilePicture: icons.per2, // Dummy image URL
+        isFavorite: true,
+        averageRating: 4,
+      },
+      {
+        id: "2",
+        name: "Jane Smith",
+        subject: "Science",
+        experience: "more than 5",
+        age: "25-30 years",
+        ratePerHour: "25",
+        contact: "65749837",
+        description:
+          "Ms. Laura James has been an educator for over 15 years, specializing in elementary school education. She holds a degree in Child Psychology from Harvard University and has received multiple awards for her innovative teaching methods.",
+        gender: "Female",
+        profilePicture: icons.per3, // Dummy image URL
+        isFavorite: true,
+        averageRating: 5,
+      },
+      {
+        id: "3",
+        name: "Alice Johnson",
+        subject: "English",
+        experience: "1-3 year",
+        age: "25-30 years",
+        ratePerHour: "25",
+        contact: "65749837",
+        description:
+          "Ms. Laura James has been an educator for over 15 years, specializing in elementary school education. She holds a degree in Child Psychology from Harvard University and has received multiple awards for her innovative teaching methods.",
+        gender: "Female",
+        profilePicture: icons.per4, // Dummy image URL
+        isFavorite: false,
+        averageRating: 3,
+      },
+    ];
 
-            const updatedTutorData = await Promise.all(
-              tutorData.map(async (tutor) => {
-                const reviewsCollection = collection(
-                  db,
-                  "tutors",
-                  tutor.id,
-                  "reviews"
-                );
-                const reviewsSnapshot = await getDocs(reviewsCollection);
-                const reviews = reviewsSnapshot.docs.map((doc) => doc.data());
-
-                const totalRating = reviews.reduce(
-                  (sum, review) => sum + review.rating,
-                  0
-                );
-                const averageRating =
-                  reviews.length > 0
-                    ? Math.round(totalRating / reviews.length)
-                    : 0;
-
-                return {
-                  ...tutor,
-                  averageRating,
-                  isFavorite: tutor.isFavorite || false,
-                };
-              })
-            );
-
-            setCards(updatedTutorData);
-          } catch (error) {
-            Alert.alert("Error", "Failed to load data from Firestore.");
-            console.log("Firestore error: ", error);
-          }
-        }
-      );
-
-      // Cleanup function to unsubscribe from the listener
-      return () => unsubscribe();
-    };
-
-    fetchTutorsAndReviews();
+    setCards(dummyTutorData);
   }, []);
 
   const filteredTutor = cards.filter((tutor) => {
@@ -111,39 +103,19 @@ const HomeScreen = (props) => {
   });
 
   // Toggle favorite function
-  const toggleFavorite = async (id) => {
-    try {
-      // Toggle favorite status locally
-      const updatedCards = cards.map((card) =>
-        card.id === id ? { ...card, isFavorite: !card.isFavorite } : card
-      );
-      setCards(updatedCards);
-
-      // Log to check the updated status locally
-      console.log("Updated cards: ", updatedCards);
-
-      // Get the document reference
-      const tutorRef = doc(db, "tutors", id);
-
-      // Update the favorite status in Firestore
-      await updateDoc(tutorRef, {
-        isFavorite: updatedCards.find((card) => card.id === id).isFavorite,
-      });
-
-      console.log(
-        `Updated favorite status for tutor ${id}: ${!updatedCards.find(
-          (card) => card.id === id
-        ).isFavorite}`
-      );
-    } catch (error) {
-      console.error("Error updating favorite status: ", error);
-    }
+  const toggleFavorite = (id) => {
+    const updatedCards = cards.map((card) =>
+      card.id === id ? { ...card, isFavorite: !card.isFavorite } : card
+    );
+    setCards(updatedCards);
   };
+
   const clearFilters = () => {
     setSelectedOption(null);
     setSelectedOptionGender(null);
     setSearchQuery(""); // Optional: Clear search as well
   };
+
   return (
     <View
       style={{
@@ -158,7 +130,6 @@ const HomeScreen = (props) => {
           props.navigation.navigate("TutorSignUp");
         }}
       />
-
       {/* search */}
       <View
         style={{
@@ -233,7 +204,13 @@ const HomeScreen = (props) => {
         }}
       >
         {filteredTutor.map((item, i) => (
-          <View
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              props.navigation.navigate("TutorDetail", {
+                tutorData: item,
+              });
+            }}
             key={i}
             style={{
               width: "90%",
@@ -261,11 +238,11 @@ const HomeScreen = (props) => {
             >
               <Image
                 style={{
-                  width: RFPercentage(9),
-                  height: RFPercentage(9),
+                  width: RFPercentage(10),
+                  height: RFPercentage(12),
                   borderRadius: RFPercentage(1),
                 }}
-                source={{ uri: item.profilePicture }} // Assuming profilePicture is a URL
+                source={item.profilePicture} // Assuming profilePicture is a URL
               />
             </TouchableOpacity>
             <View style={{ marginLeft: RFPercentage(2), width: "70%" }}>
@@ -281,7 +258,7 @@ const HomeScreen = (props) => {
                   style={{
                     color: Colors.primary,
                     fontFamily: FontFamily.medium,
-                    fontSize: RFPercentage(1.8),
+                    fontSize: RFPercentage(2.4),
                   }}
                 >
                   {item.name}
@@ -291,13 +268,13 @@ const HomeScreen = (props) => {
                   style={{
                     position: "absolute",
                     right: 0,
-                    bottom: RFPercentage(1.5),
+                    bottom: RFPercentage(1),
                   }}
                 >
                   <Fontisto
                     name="favorite"
                     color={item.isFavorite ? Colors.primary : Colors.grey}
-                    size={24}
+                    size={35}
                   />
                 </TouchableOpacity>
               </View>
@@ -306,7 +283,7 @@ const HomeScreen = (props) => {
                   marginTop: RFPercentage(0.5),
                   color: Colors.blacky,
                   fontFamily: FontFamily.regular,
-                  fontSize: RFPercentage(1.4),
+                  fontSize: RFPercentage(2),
                 }}
               >
                 Experience: {item.experience}
@@ -324,7 +301,7 @@ const HomeScreen = (props) => {
                   style={{
                     color: Colors.blacky,
                     fontFamily: FontFamily.regular,
-                    fontSize: RFPercentage(1.4),
+                    fontSize: RFPercentage(2),
                   }}
                 >
                   Subject: {item.subject}
@@ -355,7 +332,7 @@ const HomeScreen = (props) => {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>

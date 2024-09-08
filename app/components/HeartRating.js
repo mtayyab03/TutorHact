@@ -14,7 +14,7 @@ const HeartRating = ({ rating }) => {
           key={index}
           name={index < rating ? "heart" : "heart-o"} // Full heart if index is less than rating, otherwise empty heart
           size={16}
-          color={Colors.primary}
+          color={Colors.red}
           style={styles.heart}
         />
       ))}

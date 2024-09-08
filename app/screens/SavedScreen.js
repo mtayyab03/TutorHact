@@ -7,18 +7,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
 import { Feather, Fontisto } from "@expo/vector-icons";
-import {
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-  getDoc,
-  onSnapshot,
-} from "firebase/firestore";
-import { db } from "../../firebase"; // Firebase config
+
 // componenets
 import HeartRating from "../components/HeartRating";
 import Header from "../components/Header";
@@ -30,6 +23,7 @@ import { FontFamily } from "../config/font";
 import icons from "../config/icons";
 
 const SavedScreen = (props) => {
+  const [loading, setLoading] = useState(true); // Add this state for loading
   const [cards, setCards] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOption, setSelectedOption] = useState(null);
@@ -47,58 +41,48 @@ const SavedScreen = (props) => {
     setSearchQuery(""); // Optional: Clear search as well
   };
   useEffect(() => {
-    // Function to fetch tutors and reviews
-    const fetchTutorsAndReviews = () => {
-      const unsubscribe = onSnapshot(
-        collection(db, "tutors"),
-        async (snapshot) => {
-          try {
-            const tutorData = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
+    // Replace the fetching logic with dummy data
+    const fetchDummyTutors = () => {
+      setLoading(true);
+      const dummyTutors = [
+        {
+          id: "1",
+          name: "John Doe",
+          subject: "Mathematics",
+          experience: "3-5 year",
+          age: "25-30 years",
+          ratePerHour: "25",
+          contact: "65749837",
+          description:
+            "Ms. Laura James has been an educator for over 15 years, specializing in elementary school education. She holds a degree in Child Psychology from Harvard University and has received multiple awards for her innovative teaching methods.",
+          gender: "Male",
+          profilePicture: icons.per2, // Dummy image URL
+          averageRating: 4,
+          isFavorite: true,
+        },
+        {
+          id: "2",
+          name: "Jane Smith",
+          subject: "Physics",
+          experience: "1-3 year",
+          age: "25-30 years",
+          ratePerHour: "25",
+          contact: "65749837",
+          description:
+            "Ms. Laura James has been an educator for over 15 years, specializing in elementary school education. She holds a degree in Child Psychology from Harvard University and has received multiple awards for her innovative teaching methods.",
+          gender: "Female",
+          profilePicture: icons.per3, // Dummy image URL
+          averageRating: 5,
+          isFavorite: true,
+        },
+        // Add more dummy tutors as needed
+      ];
 
-            const updatedTutorData = await Promise.all(
-              tutorData.map(async (tutor) => {
-                const reviewsCollection = collection(
-                  db,
-                  "tutors",
-                  tutor.id,
-                  "reviews"
-                );
-                const reviewsSnapshot = await getDocs(reviewsCollection);
-                const reviews = reviewsSnapshot.docs.map((doc) => doc.data());
-
-                const totalRating = reviews.reduce(
-                  (sum, review) => sum + review.rating,
-                  0
-                );
-                const averageRating =
-                  reviews.length > 0
-                    ? Math.round(totalRating / reviews.length)
-                    : 0;
-
-                return {
-                  ...tutor,
-                  averageRating,
-                  isFavorite: tutor.isFavorite || false,
-                };
-              })
-            );
-
-            setCards(updatedTutorData);
-          } catch (error) {
-            Alert.alert("Error", "Failed to load data from Firestore.");
-            console.log("Firestore error: ", error);
-          }
-        }
-      );
-
-      // Cleanup function to unsubscribe from the listener
-      return () => unsubscribe();
+      setCards(dummyTutors);
+      setLoading(false);
     };
 
-    fetchTutorsAndReviews();
+    fetchDummyTutors();
   }, []);
 
   const filteredTutor = cards.filter((tutor) => {
@@ -115,20 +99,11 @@ const SavedScreen = (props) => {
     return matchesSearchQuery && matchesExperience && matchesGender;
   });
 
-  const toggleFavorite = async (id) => {
-    try {
-      const updatedCards = cards.map((card) =>
-        card.id === id ? { ...card, isFavorite: !card.isFavorite } : card
-      );
-      setCards(updatedCards);
-
-      const tutorRef = doc(db, "tutors", id);
-      await updateDoc(tutorRef, {
-        isFavorite: updatedCards.find((card) => card.id === id).isFavorite,
-      });
-    } catch (error) {
-      console.error("Error updating favorite status: ", error);
-    }
+  const toggleFavorite = (id) => {
+    const updatedCards = cards.map((card) =>
+      card.id === id ? { ...card, isFavorite: !card.isFavorite } : card
+    );
+    setCards(updatedCards);
   };
 
   return (
@@ -219,22 +194,20 @@ const SavedScreen = (props) => {
           width: "100%",
         }}
       >
-        {filteredTutor
-          .filter((item) => item.isFavorite) // Display only favorite tutors
-          .map((item, i) => (
-            <View
-              key={i}
-              style={{
-                width: "90%",
-                marginTop: RFPercentage(1.5),
-                padding: RFPercentage(1.5),
-                backgroundColor: Colors.white,
-                borderWidth: RFPercentage(0.1),
-                borderColor: Colors.lightWhite,
-                borderRadius: RFPercentage(1),
-                flexDirection: "row",
-              }}
-            >
+        {loading ? (
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : filteredTutor.filter((item) => item.isFavorite).length === 0 ? (
+          <Text style={{ marginTop: RFPercentage(2), color: Colors.blacky }}>
+            No saved tutors.
+          </Text>
+        ) : (
+          filteredTutor
+            .filter((item) => item.isFavorite)
+            .map((item, i) => (
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => {
@@ -242,110 +215,130 @@ const SavedScreen = (props) => {
                     tutorData: item,
                   });
                 }}
+                key={i}
                 style={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
+                  width: "90%",
+                  marginTop: RFPercentage(1.5),
+                  padding: RFPercentage(1.5),
+                  backgroundColor: Colors.white,
+                  borderWidth: RFPercentage(0.1),
+                  borderColor: Colors.lightWhite,
+                  borderRadius: RFPercentage(1),
+                  flexDirection: "row",
                 }}
               >
-                <Image
-                  style={{
-                    width: RFPercentage(9),
-                    height: RFPercentage(9),
-                    borderRadius: RFPercentage(1),
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    props.navigation.navigate("TutorDetail", {
+                      tutorData: item,
+                    });
                   }}
-                  source={{ uri: item.profilePicture }} // Assuming profilePicture is a URL
-                />
-              </TouchableOpacity>
-              <View style={{ marginLeft: RFPercentage(2), width: "70%" }}>
-                <View
                   style={{
-                    flexDirection: "row",
                     alignItems: "center",
-                    width: "100%",
-                    justifyContent: "space-between",
+                    justifyContent: "center",
+                    overflow: "hidden",
                   }}
                 >
-                  <Text
+                  <Image
                     style={{
-                      color: Colors.primary,
-                      fontFamily: FontFamily.medium,
-                      fontSize: RFPercentage(1.8),
+                      width: RFPercentage(10),
+                      height: RFPercentage(12),
+                      borderRadius: RFPercentage(1),
                     }}
-                  >
-                    {item.name}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => toggleFavorite(item.id)}
+                    source={item.profilePicture} // Assuming profilePicture is a URL
+                  />
+                </TouchableOpacity>
+                <View style={{ marginLeft: RFPercentage(2), width: "70%" }}>
+                  <View
                     style={{
-                      position: "absolute",
-                      right: 0,
-                      bottom: RFPercentage(1.5),
+                      flexDirection: "row",
+                      alignItems: "center",
+                      width: "100%",
+                      justifyContent: "space-between",
                     }}
-                  >
-                    <Fontisto
-                      name="favorite"
-                      color={item.isFavorite ? Colors.primary : Colors.grey}
-                      size={24}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <Text
-                  style={{
-                    marginTop: RFPercentage(0.5),
-                    color: Colors.blacky,
-                    fontFamily: FontFamily.regular,
-                    fontSize: RFPercentage(1.2),
-                  }}
-                >
-                  Experience: {item.experience}
-                </Text>
-                <View
-                  style={{
-                    marginTop: RFPercentage(1),
-                    flexDirection: "row",
-                    width: "100%",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: Colors.blacky,
-                      fontFamily: FontFamily.regular,
-                      fontSize: RFPercentage(1.2),
-                    }}
-                  >
-                    Subject: {item.subject}
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    width: "100%",
-                    justifyContent: "flex-end",
-                    alignItems: "flex-end",
-                  }}
-                >
-                  <HeartRating rating={item.averageRating} />
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={{ flexDirection: "row" }}
                   >
                     <Text
                       style={{
-                        color: Colors.lightgrey,
-                        fontFamily: FontFamily.semiBold,
-                        fontSize: RFPercentage(1.2),
-                        marginTop: RFPercentage(0.3),
+                        color: Colors.primary,
+                        fontFamily: FontFamily.medium,
+                        fontSize: RFPercentage(2.4),
                       }}
                     >
-                      {item.averageRating} hearts
+                      {item.name}
                     </Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => toggleFavorite(item.id)}
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        bottom: RFPercentage(1),
+                      }}
+                    >
+                      <Fontisto
+                        name="favorite"
+                        color={item.isFavorite ? Colors.primary : Colors.grey}
+                        size={35}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <Text
+                    style={{
+                      marginTop: RFPercentage(0.5),
+                      color: Colors.blacky,
+                      fontFamily: FontFamily.regular,
+                      fontSize: RFPercentage(2),
+                    }}
+                  >
+                    Experience: {item.experience}
+                  </Text>
+                  <View
+                    style={{
+                      marginTop: RFPercentage(1),
+                      flexDirection: "row",
+                      width: "100%",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.blacky,
+                        fontFamily: FontFamily.regular,
+                        fontSize: RFPercentage(2),
+                      }}
+                    >
+                      Subject: {item.subject}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      width: "100%",
+                      justifyContent: "flex-end",
+                      alignItems: "flex-end",
+                    }}
+                  >
+                    <HeartRating rating={item.averageRating} />
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={{ flexDirection: "row" }}
+                    >
+                      <Text
+                        style={{
+                          color: Colors.lightgrey,
+                          fontFamily: FontFamily.semiBold,
+                          fontSize: RFPercentage(1.2),
+                          marginTop: RFPercentage(0.3),
+                        }}
+                      >
+                        {item.averageRating} hearts
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            </View>
-          ))}
+              </TouchableOpacity>
+            ))
+        )}
       </ScrollView>
     </View>
   );
