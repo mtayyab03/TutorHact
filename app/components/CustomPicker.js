@@ -54,7 +54,7 @@ const CustomPicker = ({ options, selectedItem, onSelect, title }) => {
               >
                 <FontAwesome
                   name="times"
-                  size={RFPercentage(2)}
+                  size={RFPercentage(2.7)}
                   color={Colors.primary}
                 />
               </TouchableOpacity>
@@ -130,7 +130,8 @@ const styles = StyleSheet.create({
   optionText: {
     color: Colors.blacky,
     fontFamily: FontFamily.regular,
-    fontSize: RFPercentage(1.5),
+    fontSize: RFPercentage(1.8),
+    textAlign: "center",
   },
 });
 

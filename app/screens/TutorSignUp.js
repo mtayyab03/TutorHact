@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
 import { RFPercentage } from "react-native-responsive-fontsize";
 import { FontAwesome, FontAwesome5 } from "@expo/vector-icons";
@@ -19,8 +21,9 @@ import Colors from "../config/Colors";
 import { FontFamily } from "../config/font";
 import icons from "../config/icons";
 
-import { db } from "../../firebase"; // Firebase config
-import { collection, addDoc } from "firebase/firestore";
+import { db, storage } from "../../firebase"; // Firebase config
+import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // componenet
 import CustomPicker from "../components/CustomPicker";
@@ -33,18 +36,76 @@ const TutorSignUp = ({ navigation }) => {
   const [contact, setContact] = useState("");
 
   const [profilePicture, setProfilePicture] = useState(null);
-
   const handleProfilePictureUpload = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+    const options = ["Take a photo", "Choose from gallery", "Cancel"];
+    const cancelIndex = 2;
 
-    if (!result.canceled) {
-      setProfilePicture(result.assets[0].uri);
-    }
+    Alert.alert("Profile Picture", "Choose an option", [
+      {
+        text: options[0], // 'Take a photo'
+        onPress: async () => {
+          const cameraPermission =
+            await ImagePicker.requestCameraPermissionsAsync();
+          if (cameraPermission.granted) {
+            let result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.7,
+            });
+            if (!result.canceled) {
+              const uri = result.assets[0].uri;
+              const fileName = uri.split("/").pop();
+              const storageRef = ref(storage, `profile_pictures/${fileName}`);
+
+              try {
+                const response = await fetch(uri);
+                const blob = await response.blob();
+                await uploadBytes(storageRef, blob);
+                const downloadURL = await getDownloadURL(storageRef);
+                setProfilePicture(downloadURL);
+              } catch (error) {
+                console.error("Error uploading image: ", error);
+              }
+            }
+          }
+        },
+      },
+      {
+        text: options[1], // 'Choose from gallery'
+        onPress: async () => {
+          const galleryPermission =
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (galleryPermission.granted) {
+            let result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.7,
+            });
+            if (!result.canceled) {
+              const uri = result.assets[0].uri;
+              const fileName = uri.split("/").pop();
+              const storageRef = ref(storage, `profile_pictures/${fileName}`);
+
+              try {
+                const response = await fetch(uri);
+                const blob = await response.blob();
+                await uploadBytes(storageRef, blob);
+                const downloadURL = await getDownloadURL(storageRef);
+                setProfilePicture(downloadURL);
+              } catch (error) {
+                console.error("Error uploading image: ", error);
+              }
+            }
+          }
+        },
+      },
+      {
+        text: options[2], // 'Cancel'
+        style: "cancel",
+      },
+    ]);
   };
 
   const [selectedOption, setSelectedOption] = useState(null);
@@ -62,6 +123,8 @@ const TutorSignUp = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
+    const contactRegex = /^\d{8}$/; // Regex to match exactly 8 digits
+
     if (
       !name ||
       !subject ||
@@ -77,7 +140,26 @@ const TutorSignUp = ({ navigation }) => {
       return;
     }
 
+    if (!contactRegex.test(contact)) {
+      Alert.alert("Error", "Contact information must be exactly 8 digits.");
+      return;
+    }
+
     try {
+      // Query Firestore to check if the contact number already exists
+      const querySnapshot = await getDocs(
+        query(collection(db, "tutors"), where("contact", "==", contact))
+      );
+
+      if (!querySnapshot.empty) {
+        // Contact number already exists
+        Alert.alert(
+          "Error",
+          "This contact number is already in use. Please use another number."
+        );
+        return;
+      }
+
       // Save data to Firestore
       await addDoc(collection(db, "tutors"), {
         name,
@@ -103,209 +185,225 @@ const TutorSignUp = ({ navigation }) => {
     }
   };
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "flex-start",
-        alignItems: "center",
-        backgroundColor: Colors.white,
-      }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
     >
-      <LinearGradient
-        colors={[Colors.primary, Colors.secondary]} // Define your two gradient colors here
-        start={{ x: 0, y: 0 }} // Start point (top-left)
-        end={{ x: 1, y: 1 }} // End point (bottom-right)
-        style={{
-          width: "100%",
-          height: Platform.OS == "ios" ? RFPercentage(12) : RFPercentage(5),
-          backgroundColor: Colors.primary,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
       >
         <View
           style={{
-            width: "90%",
-            flexDirection: "row",
+            flex: 1,
+            justifyContent: "flex-start",
             alignItems: "center",
-            justifyContent: "center",
-            position: "absolute",
-            bottom: 0,
+            backgroundColor: Colors.white,
           }}
         >
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => navigation.goBack()}
-            style={{ position: "absolute", left: 0 }}
+          <LinearGradient
+            colors={[Colors.primary, Colors.secondary]} // Define your two gradient colors here
+            start={{ x: 0, y: 0 }} // Start point (top-left)
+            end={{ x: 1, y: 1 }} // End point (bottom-right)
+            style={{
+              width: "100%",
+              height: Platform.OS == "ios" ? RFPercentage(12) : RFPercentage(5),
+              backgroundColor: Colors.primary,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <FontAwesome5 name="chevron-left" color={Colors.white} size={24} />
-          </TouchableOpacity>
-          <Image
-            style={{ width: RFPercentage(8), height: RFPercentage(8) }}
-            source={icons.logo}
-          />
-        </View>
-      </LinearGradient>
-
-      <Text
-        style={{
-          fontSize: RFPercentage(1.8),
-          color: Colors.primary,
-          fontFamily: FontFamily.semiBold,
-          marginTop: RFPercentage(1),
-          marginBottom: RFPercentage(0.3),
-        }}
-      >
-        SIGN UP AS TUTOR
-      </Text>
-
-      {/* text fields */}
-      <TextInput
-        placeholder="Full name"
-        value={name}
-        onChangeText={setName}
-        style={styles.inputfield}
-        placeholderTextColor={Colors.darkgrey}
-      />
-
-      {/* Profile Picture Upload */}
-
-      <View style={{ width: "90%", marginTop: RFPercentage(1) }}>
-        <Text
-          style={{
-            fontSize: RFPercentage(1.4),
-            color: Colors.blacky,
-            fontFamily: FontFamily.semiBold,
-            marginBottom: RFPercentage(0.3),
-          }}
-        >
-          Profile Picture :
-        </Text>
-      </View>
-      <View
-        style={{
-          width: RFPercentage(15),
-          height: RFPercentage(15),
-          borderWidth: RFPercentage(0.1),
-          borderColor: Colors.primary,
-          borderRadius: RFPercentage(2),
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          marginBottom: RFPercentage(1),
-        }}
-      >
-        <TouchableOpacity onPress={handleProfilePictureUpload}>
-          <View style={{ alignItems: "center" }}>
-            {profilePicture ? (
+            <View
+              style={{
+                width: "90%",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "absolute",
+                bottom: 0,
+              }}
+            >
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation.goBack()}
+                style={{ position: "absolute", left: 0 }}
+              >
+                <FontAwesome5
+                  name="chevron-left"
+                  color={Colors.white}
+                  size={24}
+                />
+              </TouchableOpacity>
               <Image
-                source={{ uri: profilePicture }}
-                style={{
-                  width: RFPercentage(15),
-                  height: RFPercentage(15),
-                  borderRadius: RFPercentage(2),
-                }}
+                style={{ width: RFPercentage(8), height: RFPercentage(8) }}
+                source={icons.logo}
               />
-            ) : (
-              <FontAwesome
-                name="camera"
-                size={RFPercentage(5)}
-                color={Colors.primary}
-              />
-            )}
+            </View>
+          </LinearGradient>
+
+          <Text
+            style={{
+              fontSize: RFPercentage(2),
+              color: Colors.primary,
+              fontFamily: FontFamily.semiBold,
+              marginTop: RFPercentage(1),
+              marginBottom: RFPercentage(0.3),
+            }}
+          >
+            SIGN UP AS TUTOR
+          </Text>
+
+          {/* text fields */}
+          <TextInput
+            placeholder="Full name"
+            value={name}
+            onChangeText={setName}
+            style={styles.inputfield}
+            placeholderTextColor={Colors.darkgrey}
+          />
+
+          {/* Profile Picture Upload */}
+
+          <View style={{ width: "90%", marginTop: RFPercentage(1) }}>
+            <Text
+              style={{
+                fontSize: RFPercentage(1.8),
+                color: Colors.blacky,
+                fontFamily: FontFamily.semiBold,
+                marginBottom: RFPercentage(0.3),
+              }}
+            >
+              Profile Picture :
+            </Text>
           </View>
-        </TouchableOpacity>
-      </View>
+          <View
+            style={{
+              width: RFPercentage(15),
+              height: RFPercentage(15),
+              borderWidth: RFPercentage(0.1),
+              borderColor: Colors.primary,
+              borderRadius: RFPercentage(2),
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              marginBottom: RFPercentage(1),
+            }}
+          >
+            <TouchableOpacity onPress={handleProfilePictureUpload}>
+              <View style={{ alignItems: "center" }}>
+                {profilePicture ? (
+                  <Image
+                    source={{ uri: profilePicture }}
+                    style={{
+                      width: RFPercentage(15),
+                      height: RFPercentage(15),
+                      borderRadius: RFPercentage(2),
+                    }}
+                  />
+                ) : (
+                  <FontAwesome
+                    name="camera"
+                    size={RFPercentage(5)}
+                    color={Colors.primary}
+                  />
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
 
-      {/* picker */}
+          {/* picker */}
 
-      {/* Subject Input */}
-      <View style={{ width: "70%" }}>
-        <CustomPicker
-          options={[
-            "18-25 years",
-            "26-35 years",
-            "35-40 years",
-            "above 40 years",
-          ]}
-          selectedItem={selectedOptionAge}
-          onSelect={handleSelectOptionAge}
-          title="Age"
-        />
-      </View>
-      <View style={{ width: "70%" }}>
-        <CustomPicker
-          options={["1-3 year", "3-5 year", "more than 5"]}
-          selectedItem={selectedOption}
-          onSelect={handleSelectOption}
-          title="Experience"
-        />
-      </View>
-      <View style={{ width: "70%" }}>
-        <CustomPicker
-          options={["Male", "Female", "Prefer not Say"]}
-          selectedItem={selectedOptionGender}
-          onSelect={handleSelectOptionGender}
-          title="Gender"
-        />
-      </View>
-      <TextInput
-        placeholder="Subject"
-        value={subject}
-        onChangeText={setSubject}
-        style={styles.inputfield}
-        placeholderTextColor={Colors.darkgrey}
-      />
-      {/* Rate per Hour Input */}
-      <TextInput
-        placeholder="Rate per hour"
-        value={ratePerHour}
-        onChangeText={setRatePerHour}
-        keyboardType="numeric"
-        style={styles.inputfield}
-        placeholderTextColor={Colors.darkgrey}
-      />
-      {/* Rate per Hour Input */}
-      <TextInput
-        placeholder="Contact Information"
-        value={contact}
-        onChangeText={setContact}
-        multiline
-        style={styles.inputfield}
-        placeholderTextColor={Colors.darkgrey}
-      />
-      <TextInput
-        placeholder="Enter description"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        style={[
-          styles.inputfield,
-          { height: RFPercentage(7), borderRadius: RFPercentage(2) },
-        ]}
-        placeholderTextColor={Colors.darkgrey}
-      />
+          {/* Subject Input */}
+          <View style={{ width: "70%" }}>
+            <CustomPicker
+              options={[
+                "18-25 years",
+                "26-35 years",
+                "35-40 years",
+                "above 40 years",
+              ]}
+              selectedItem={selectedOptionAge}
+              onSelect={handleSelectOptionAge}
+              title="Age"
+            />
+          </View>
+          <View style={{ width: "70%" }}>
+            <CustomPicker
+              options={["1-3 year", "3-5 year", "more than 5"]}
+              selectedItem={selectedOption}
+              onSelect={handleSelectOption}
+              title="Experience"
+            />
+          </View>
+          <View style={{ width: "70%" }}>
+            <CustomPicker
+              options={["Male", "Female", "Prefer not Say"]}
+              selectedItem={selectedOptionGender}
+              onSelect={handleSelectOptionGender}
+              title="Gender"
+            />
+          </View>
+          <TextInput
+            placeholder="Subject"
+            value={subject}
+            onChangeText={setSubject}
+            style={styles.inputfield}
+            placeholderTextColor={Colors.darkgrey}
+          />
+          {/* Rate per Hour Input */}
+          <TextInput
+            placeholder="Rate per hour"
+            value={ratePerHour}
+            onChangeText={setRatePerHour}
+            keyboardType="numeric"
+            style={styles.inputfield}
+            placeholderTextColor={Colors.darkgrey}
+          />
+          {/* Rate per Hour Input */}
+          <TextInput
+            placeholder="Contact Information"
+            value={contact}
+            onChangeText={setContact}
+            style={styles.inputfield}
+            placeholderTextColor={Colors.darkgrey}
+          />
+          <TextInput
+            placeholder="Enter description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            style={[
+              styles.inputfield,
+              { height: RFPercentage(7), borderRadius: RFPercentage(2) },
+            ]}
+            placeholderTextColor={Colors.darkgrey}
+          />
 
-      {/* button */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          width: "90%",
-          justifyContent: "space-between",
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.submitButton, { backgroundColor: Colors.grey }]}
-        >
-          <Text style={styles.submitText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-          <Text style={styles.submitText}>Submit</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          {/* button */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              width: "90%",
+              justifyContent: "space-between",
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={[styles.submitButton, { backgroundColor: Colors.grey }]}
+            >
+              <Text style={styles.submitText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSubmit}
+              style={styles.submitButton}
+            >
+              <Text style={styles.submitText}>Submit</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -331,7 +429,7 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: Colors.white,
-    fontSize: RFPercentage(1.3),
+    fontSize: RFPercentage(1.6),
     fontFamily: FontFamily.bold,
   },
   container: {

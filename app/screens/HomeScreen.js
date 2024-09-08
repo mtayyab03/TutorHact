@@ -52,7 +52,7 @@ const HomeScreen = (props) => {
               id: doc.id,
               ...doc.data(),
             }));
-
+            console.log("Raw tutor data from Firestore:", tutorData); // Log raw tutor data
             const updatedTutorData = await Promise.all(
               tutorData.map(async (tutor) => {
                 const reviewsCollection = collection(
@@ -80,7 +80,7 @@ const HomeScreen = (props) => {
                 };
               })
             );
-
+            console.log("Updated tutor data with reviews:", updatedTutorData); // Log updated tutor data
             setCards(updatedTutorData);
           } catch (error) {
             Alert.alert("Error", "Failed to load data from Firestore.");
@@ -158,7 +158,6 @@ const HomeScreen = (props) => {
           props.navigation.navigate("TutorSignUp");
         }}
       />
-
       {/* search */}
       <View
         style={{
@@ -233,7 +232,13 @@ const HomeScreen = (props) => {
         }}
       >
         {filteredTutor.map((item, i) => (
-          <View
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              props.navigation.navigate("TutorDetail", {
+                tutorData: item,
+              });
+            }}
             key={i}
             style={{
               width: "90%",
@@ -261,8 +266,8 @@ const HomeScreen = (props) => {
             >
               <Image
                 style={{
-                  width: RFPercentage(9),
-                  height: RFPercentage(9),
+                  width: RFPercentage(10),
+                  height: RFPercentage(12),
                   borderRadius: RFPercentage(1),
                 }}
                 source={{ uri: item.profilePicture }} // Assuming profilePicture is a URL
@@ -281,7 +286,7 @@ const HomeScreen = (props) => {
                   style={{
                     color: Colors.primary,
                     fontFamily: FontFamily.medium,
-                    fontSize: RFPercentage(1.8),
+                    fontSize: RFPercentage(2.4),
                   }}
                 >
                   {item.name}
@@ -291,13 +296,13 @@ const HomeScreen = (props) => {
                   style={{
                     position: "absolute",
                     right: 0,
-                    bottom: RFPercentage(1.5),
+                    bottom: RFPercentage(1),
                   }}
                 >
                   <Fontisto
                     name="favorite"
                     color={item.isFavorite ? Colors.primary : Colors.grey}
-                    size={24}
+                    size={35}
                   />
                 </TouchableOpacity>
               </View>
@@ -306,7 +311,7 @@ const HomeScreen = (props) => {
                   marginTop: RFPercentage(0.5),
                   color: Colors.blacky,
                   fontFamily: FontFamily.regular,
-                  fontSize: RFPercentage(1.4),
+                  fontSize: RFPercentage(2),
                 }}
               >
                 Experience: {item.experience}
@@ -324,7 +329,7 @@ const HomeScreen = (props) => {
                   style={{
                     color: Colors.blacky,
                     fontFamily: FontFamily.regular,
-                    fontSize: RFPercentage(1.4),
+                    fontSize: RFPercentage(2),
                   }}
                 >
                   Subject: {item.subject}
@@ -355,7 +360,7 @@ const HomeScreen = (props) => {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
