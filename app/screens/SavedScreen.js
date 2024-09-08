@@ -47,33 +47,33 @@ const SavedScreen = (props) => {
       const dummyTutors = [
         {
           id: "1",
-          name: "John Doe",
-          subject: "Mathematics",
-          experience: "3-5 year",
-          age: "25-30 years",
-          ratePerHour: "25",
-          contact: "65749837",
+          profilePicture: icons.femaletutor, // Dummy image URL
+          age: "35-40 years",
+          averageRating: 3,
+          contact: "81237654",
           description:
-            "Ms. Laura James has been an educator for over 15 years, specializing in elementary school education. She holds a degree in Child Psychology from Harvard University and has received multiple awards for her innovative teaching methods.",
-          gender: "Male",
-          profilePicture: icons.per2, // Dummy image URL
-          averageRating: 4,
+            "With years of experience in teaching physics, I focus on breaking down difficult topics like mechanics and electromagnetism. My lessons are designed to enhance analytical thinking and problem-solving skills.",
+          experience: "more than 5",
+          gender: "Female",
           isFavorite: true,
+          name: "Clara Teo",
+          ratePerHour: "50",
+          subject: "Physics",
         },
         {
           id: "2",
-          name: "Jane Smith",
-          subject: "Physics",
-          experience: "1-3 year",
-          age: "25-30 years",
-          ratePerHour: "25",
-          contact: "65749837",
-          description:
-            "Ms. Laura James has been an educator for over 15 years, specializing in elementary school education. She holds a degree in Child Psychology from Harvard University and has received multiple awards for her innovative teaching methods.",
-          gender: "Female",
-          profilePicture: icons.per3, // Dummy image URL
+          profilePicture: icons.maletutor, // Dummy image URL
+          age: "above 40 years",
           averageRating: 5,
+          contact: "83749672",
+          description:
+            "With over 20 years of experience, I guide students through various historical and political topics. My aim is to foster a deep understanding of the world and how social systems function.",
+          experience: "more than 5",
+          gender: "Male",
           isFavorite: true,
+          name: "Richard Low",
+          ratePerHour: "70",
+          subject: "Social Studies",
         },
         // Add more dummy tutors as needed
       ];
